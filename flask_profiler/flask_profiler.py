@@ -124,22 +124,6 @@ class _ProfilerState(object):
                 )
 
     def _init_authenticator(self):
-        flask_security_raw = self.conf.get("flaskSecurity")
-        if isinstance(flask_security_raw, dict):
-            flask_security_conf = flask_security_raw
-        elif flask_security_raw:
-            flask_security_conf = {"enabled": bool(flask_security_raw)}
-        else:
-            flask_security_conf = {}
-
-        flask_login_raw = self.conf.get("flaskLogin")
-        if isinstance(flask_login_raw, dict):
-            flask_login_conf = flask_login_raw
-        elif flask_login_raw:
-            flask_login_conf = {"enabled": bool(flask_login_raw)}
-        else:
-            flask_login_conf = {}
-
         basic_raw = self.conf.get("basicAuth")
         if isinstance(basic_raw, dict):
             basic_conf = basic_raw
@@ -147,72 +131,6 @@ class _ProfilerState(object):
             basic_conf = {"enabled": bool(basic_raw)}
         else:
             basic_conf = {}
-
-        if flask_security_conf.get("enabled"):
-            try:
-                import flask_security
-            except ImportError as exc:
-                raise RuntimeError(
-                    "flask-profiler is configured to use Flask-Security authentication, "
-                    "but neither Flask-Security nor Flask-Security-Too is installed"
-                ) from exc
-
-            decorator = None
-
-            auth_required = getattr(flask_security, "auth_required", None)
-            if callable(auth_required):
-                auth_args = flask_security_conf.get("args", ())
-                if auth_args and not isinstance(auth_args, (list, tuple)):
-                    auth_args = (auth_args,)
-                auth_kwargs = {
-                    key: value
-                    for key, value in flask_security_conf.items()
-                    if key not in {"enabled", "args"}
-                }
-                decorator = auth_required(*auth_args, **auth_kwargs)
-            else:
-                login_required = getattr(flask_security, "login_required", None)
-                if login_required is None:
-                    try:
-                        from flask_security.decorators import login_required as security_login_required
-                    except (ImportError, AttributeError):
-                        security_login_required = None
-                    login_required = security_login_required
-                if callable(login_required):
-                    decorator = login_required
-
-            if decorator is None:
-                raise RuntimeError(
-                    "flask-profiler could not locate a login decorator in Flask-Security. "
-                    "Ensure either auth_required or login_required is available."
-                )
-
-            if flask_login_conf.get("enabled"):
-                logging.warning(
-                    " * flask-profiler: ignoring flaskLogin configuration because flaskSecurity.enabled is True"
-                )
-            if basic_conf.get("enabled"):
-                logging.warning(
-                    " * flask-profiler: ignoring basicAuth configuration because flaskSecurity.enabled is True"
-                )
-
-            self._auth_strategy = "flask-security"
-            return decorator
-
-        if flask_login_conf.get("enabled"):
-            try:
-                from flask_login import login_required as flask_login_required
-            except ImportError as exc:
-                raise RuntimeError(
-                    "flask-profiler is configured to use Flask-Login authentication, "
-                    "but Flask-Login is not installed"
-                ) from exc
-            if basic_conf.get("enabled"):
-                logging.warning(
-                    " * flask-profiler: ignoring basicAuth configuration because flaskLogin.enabled is True"
-                )
-            self._auth_strategy = "flask-login"
-            return flask_login_required
 
         if basic_conf.get("enabled"):
             self.auth = HTTPBasicAuth()
