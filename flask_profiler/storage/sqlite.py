@@ -316,5 +316,11 @@ class Sqlite(BaseStorage):
             })
         return result
 
+    def close(self):
+        self.connection.close()
+
     def __exit__(self, exc_type, exc_value, traceback):
-        return self.connection.close()
+        self.close()
+        
+    def __del__(self):
+        self.close()

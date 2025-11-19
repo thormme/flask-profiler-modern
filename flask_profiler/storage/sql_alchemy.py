@@ -318,5 +318,11 @@ class Sqlalchemy(BaseStorage):
             results[row[0]] = row[1]
         return results
 
+    def close(self):
+        self.db.dispose()
+
     def __exit__(self, exc_type, exc_value, traceback):
-        return self.db
+        self.close()
+        
+    def __del__(self):
+        self.close()

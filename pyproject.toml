@@ -1,3 +1,174 @@
 [build-system]
-requires = ["setuptools>=61", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core>=1.2.0", "wheel",]
+build-backend = "poetry.core.masonry.api"
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: not covered",
+    "@overload",
+]
+
+[tool.coverage.run]
+branch = true
+relative_files = true
+omit = [
+    ".tox/*",
+    "tests/*",
+]
+
+[tool.poetry]
+name = "flask-profiler-modern"
+version = "3.0.0"
+description = "API endpoint profiler for Flask applications"
+package-mode = false
+
+# packages = [
+#     { include = "flask-profiler", from = "flask_profiler" },
+# ]
+
+authors = ["Berk Polat <berkpolat@gmail.com>", "Mustafa Atik <muatik@gmail.com>"]
+maintainers = ["Berk Polat <berkpolat@gmail.com>"]
+
+include = []
+license = "MIT"
+readme = "README.md"
+
+homepage = "https://github.com/berkpolatCE/flask-profiler-modern"
+repository = "https://github.com/berkpolatCE/flask-profiler-modern"
+documentation = "https://github.com/berkpolatCE/flask-profiler-modern"
+
+keywords = [
+    "python3",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+
+[tool.poetry.dependencies]
+python = "^3.9.0"
+python-dotenv = "^1.2.1"
+tomli = { version = "^2.3.0", python = "<3.11" }
+Flask = { extras = ["async"], version = ">=3.0.0" }
+Flask-HTTPAuth = ">=4.7.0"
+simplejson = ">=3.19.0"
+SQLAlchemy = { version = ">2.0.0", optional = true }
+pymongo = { version = ">=4.14.1,<5", optional = true }
+
+
+[tool.poetry.group.dev.dependencies]
+
+# A list of all of the optional dependencies, some of which are included in the
+# below `extras`. They can be opted into by apps.
+pytest = { version = ">=8.3", optional = false }
+pytest-cov = { version = ">=5.0", optional = false }
+pytest-asyncio = { version = ">=0.26.0", optional = false }
+pymongo = { version = ">=4.14.1,<5", optional = false }
+mongomock = { version = ">=4.3", optional = true }
+
+
+[tool.poetry.extras]
+sqlalchemy = ["SQLAlchemy"]
+mongo = ["pymongo"]
+all = ["SQLAlchemy", "pymongo"]
+dev = ["SQLAlchemy", "pymongo", "pytest", "pytest-cov", "pytest-asyncio", "mongomock"]
+
+
+[tool.poetry.group.linters]
+optional = true
+
+
+[tool.poetry.group.linters.dependencies]
+ruff = "^0.14.5"
+
+
+[tool.poetry.group.tests]
+optional = true
+
+
+[tool.poetry.group.tests.dependencies]
+pytest = ">=5.0"
+pytest-cov = ">=4.3"
+
+
+[tool.poetry.urls]
+"Tracker" = "https://github.com/berkpolatCE/flask-profiler-modern/issues"
+
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = """
+--doctest-modules \
+--cov=./ \
+--cov-append \
+--cov-report html:tests/reports/coverage-html \
+--cov-report xml:tests/reports/coverage.xml \
+--ignore=docs/
+"""
+testpaths = [
+    "tests",
+]
+pythonpath = [
+  "."
+]
+asyncio_mode = "auto"
+
+
+[tool.ruff]
+lint.fixable = ["ALL"]
+lint.select = ["ALL"]
+lint.ignore = [
+    "D203",    # One blank line before class docstring
+    "D212",    # Multi-line summary first line
+    "PLR0913", # Too many arguments
+    "Q000",    # Single quotes found but double quotes preferred
+]
+line-length = 120
+show-fixes = true
+src = ["src",]
+target-version = "py39"
+
+
+[tool.ruff.lint.flake8-copyright]
+author = "Lari Liuhamo"
+
+
+[tool.ruff.lint.flake8-quotes]
+docstring-quotes = "double"
+multiline-quotes = "double"
+
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+
+[tool.ruff.lint.per-file-ignores]
+# https://beta.ruff.rs/docs/rules/
+"__init__.py" = ["F401", "F403", "F405",]
+"tests/*" = ["ANN", "ARG", "INP001", "S101",]
+"logger.py" = ["N815",]
+
+
+[tool.ruff.lint.pylint]
+max-args = 15
+max-branches = 20
+max-returns = 10
+max-statements = 80
+
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+

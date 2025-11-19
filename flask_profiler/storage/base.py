@@ -22,3 +22,6 @@ class BaseStorage(object):
 
     def truncate(self):
         raise Exception("Not implemented Error")
+    
+    def close(self):
+        raise Exception("Not implemented Error")

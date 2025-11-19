@@ -57,6 +57,42 @@ def test_profiler_records_per_app(tmp_path, late_route):
         assert {m["name"] for m in data} == {"/tracked", "/late"}
     else:
         assert {m["name"] for m in data} == {"/tracked"}
+        
+        
+@pytest.mark.parametrize("late_route", [False, True])
+def test_profiler_records_per_app_async(tmp_path, late_route):
+    app = Flask(f"app-{late_route}")
+    db_path = tmp_path / ("late" if late_route else "early")
+    app.config["flask_profiler"] = _build_config(db_path)
+    app.config["TESTING"] = True
+
+    @app.route("/tracked")
+    async def tracked():
+        return "ok"
+
+    flask_profiler.init_app(app)
+
+    if late_route:
+        @app.route("/late")
+        @flask_profiler.profile()
+        async def late():
+            return "late"
+
+    with app.app_context():
+        flask_profiler.collection.truncate()
+
+    client = app.test_client()
+    client.get("/tracked")
+    if late_route:
+        client.get("/late")
+
+    with app.app_context():
+        data = list(flask_profiler.collection.filter())
+
+    if late_route:
+        assert {m["name"] for m in data} == {"/tracked", "/late"}
+    else:
+        assert {m["name"] for m in data} == {"/tracked"}
 
 
 def test_profiler_state_isolated_between_apps(tmp_path):

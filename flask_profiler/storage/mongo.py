@@ -274,3 +274,12 @@ class Mongo(BaseStorage):
             result = result['result']
 
         return result
+
+    def close(self):
+        pass
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+        
+    def __del__(self):
+        self.close()

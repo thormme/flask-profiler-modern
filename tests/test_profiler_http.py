@@ -60,3 +60,19 @@ def test_measure_function_records_custom_call(app, profiler_collection):
     entry = measurements[0]
     assert entry["name"] == "do_wait"
     assert entry["method"] == "call"
+
+
+async def test_measure_function_records_custom_call_async(app, profiler_collection):
+    profiler_collection.truncate()
+
+    async def do_wait(seconds):
+        return seconds
+
+    wrapped = flask_profiler.measure(do_wait, "do_wait", "call")
+    assert await wrapped(3) == 3
+
+    measurements = list(profiler_collection.filter())
+    assert len(measurements) == 1
+    entry = measurements[0]
+    assert entry["name"] == "do_wait"
+    assert entry["method"] == "call"

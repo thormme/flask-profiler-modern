@@ -1,4 +1,5 @@
 import functools
+import inspect
 import logging
 import re
 import time
@@ -246,14 +247,25 @@ class _ProfilerState(object):
         return bool(sampling_fn())
 
     def _record_call(self, func, name, method, context, args, kwargs):
-        if self._is_ignored(name):
-            return func(*args, **kwargs)
-        if not self._should_sample():
+        if self._is_ignored(name) or not self._should_sample():
             return func(*args, **kwargs)
         measurement = Measurement(name, args, kwargs, method, context)
         measurement.start()
         try:
             return func(*args, **kwargs)
+        finally:
+            measurement.stop()
+            if self.conf.get("verbose", False):
+                pp(measurement.__json__())
+            self.collection.insert(measurement.__json__())
+            
+    async def _record_call_async(self, func, name, method, context, args, kwargs):
+        if self._is_ignored(name) or not self._should_sample():
+            return await func(*args, **kwargs)
+        measurement = Measurement(name, args, kwargs, method, context)
+        measurement.start()
+        try:
+            return await func(*args, **kwargs)
         finally:
             measurement.stop()
             if self.conf.get("verbose", False):
@@ -278,26 +290,68 @@ class _ProfilerState(object):
         }
         return self._record_call(func, name, request.method, context, args, kwargs)
 
+    async def _invoke_http_async(self, func, args, kwargs):
+        if not self.enabled:
+            return await func(*args, **kwargs)
+        if request.url_rule is not None:
+            name = str(request.url_rule)
+        else:
+            name = func.__name__
+        context = {
+            "url": request.base_url,
+            "args": dict(request.args.items()),
+            "form": dict(request.form.items()),
+            "body": request.data.decode("utf-8", "strict"),
+            "headers": dict(request.headers.items()),
+            "func": request.endpoint,
+            "ip": request.remote_addr,
+        }
+        return await self._record_call_async(func, name, request.method, context, args, kwargs)
+
     def wrap_http_endpoint(self, func):
         if getattr(func, "_flask_profiler_wrapped", False):
             return func
+        
+        is_async = inspect.iscoroutinefunction(func)
+        
+        select_wrapper = None
+        if is_async:
+            @functools.wraps(func)
+            async def wrapper(*args, **kwargs):
+                if not self.enabled:
+                    return await func(*args, **kwargs)
+                return await self._invoke_http(func, args, kwargs)
+            select_wrapper = wrapper
+        else:
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                if not self.enabled:
+                    return func(*args, **kwargs)
+                return self._invoke_http(func, args, kwargs)
+            select_wrapper = wrapper
 
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            if not self.enabled:
-                return func(*args, **kwargs)
-            return self._invoke_http(func, args, kwargs)
-
-        wrapper._flask_profiler_wrapped = True
-        return wrapper
+        select_wrapper._flask_profiler_wrapped = True
+        return select_wrapper
 
     def measure(self, func, name, method, context=None):
         if not self.enabled:
             return func
+        
+        is_async = inspect.iscoroutinefunction(func)
 
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            return self._record_call(func, name, method, context, args, kwargs)
+        select_wrapper = None
+        
+        if is_async:
+            @functools.wraps(func)
+            async def wrapper(*args, **kwargs):
+                return await self._record_call(func, name, method, context, args, kwargs)
+            select_wrapper = wrapper
+        else:
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                return self._record_call(func, name, method, context, args, kwargs)
+            select_wrapper = wrapper
+        
 
         return wrapper
 
@@ -338,11 +392,18 @@ def profile():
             return func
 
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs):
+            is_async = inspect.iscoroutinefunction(func)
             state = _resolve_state(silent=True)
             if state is None or not state.enabled:
-                return func(*args, **kwargs)
-            return state._invoke_http(func, args, kwargs)
+                if is_async:
+                    return await func(*args, **kwargs)
+                else:
+                    return func(*args, **kwargs)
+            if is_async:
+                return await state._invoke_http_async(func, args, kwargs)
+            else:
+                return state._invoke_http(func, args, kwargs)
 
         wrapper._flask_profiler_wrapped = True
         return wrapper
