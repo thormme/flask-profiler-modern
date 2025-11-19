@@ -20,11 +20,10 @@ omit = [
 name = "flask-profiler-modern"
 version = "3.0.0"
 description = "API endpoint profiler for Flask applications"
-package-mode = false
 
-# packages = [
-#     { include = "flask-profiler", from = "flask_profiler" },
-# ]
+packages = [
+    { include = "flask_profiler" },
+]
 
 authors = ["Berk Polat <berkpolat@gmail.com>", "Mustafa Atik <muatik@gmail.com>"]
 maintainers = ["Berk Polat <berkpolat@gmail.com>"]
