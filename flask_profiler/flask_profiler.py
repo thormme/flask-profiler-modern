@@ -262,6 +262,7 @@ class _ProfilerState(object):
     async def _record_call_async(self, func, name, method, context, args, kwargs):
         if self._is_ignored(name) or not self._should_sample():
             return await func(*args, **kwargs)
+        
         measurement = Measurement(name, args, kwargs, method, context)
         measurement.start()
         try:
@@ -344,7 +345,7 @@ class _ProfilerState(object):
         if is_async:
             @functools.wraps(func)
             async def wrapper(*args, **kwargs):
-                return await self._record_call(func, name, method, context, args, kwargs)
+                return await self._record_call_async(func, name, method, context, args, kwargs)
             select_wrapper = wrapper
         else:
             @functools.wraps(func)

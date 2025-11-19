@@ -1,3 +1,4 @@
+import time
 import flask_profiler
 
 
@@ -76,3 +77,37 @@ async def test_measure_function_records_custom_call_async(app, profiler_collecti
     entry = measurements[0]
     assert entry["name"] == "do_wait"
     assert entry["method"] == "call"
+    
+async def test_measure_function_records_custom_call_timed_async(app, profiler_collection):
+    profiler_collection.truncate()
+
+    async def do_wait(seconds):
+        time.sleep(seconds)
+        return seconds
+
+    wrapped = flask_profiler.measure(do_wait, "do_wait", "call")
+    assert await wrapped(0.25) == 0.25
+
+    measurements = list(profiler_collection.filter())
+    assert len(measurements) == 1
+    entry = measurements[0]
+    assert entry["name"] == "do_wait"
+    assert entry["method"] == "call"
+    assert float(entry["elapsed"]) >= 0.025
+    
+def test_measure_function_records_custom_call_timed_sync(app, profiler_collection):
+    profiler_collection.truncate()
+
+    def do_wait(seconds):
+        time.sleep(seconds)
+        return seconds
+
+    wrapped = flask_profiler.measure(do_wait, "do_wait", "call")
+    assert wrapped(0.25) == 0.25
+
+    measurements = list(profiler_collection.filter())
+    assert len(measurements) == 1
+    entry = measurements[0]
+    assert entry["name"] == "do_wait"
+    assert entry["method"] == "call"
+    assert float(entry["elapsed"]) >= 0.025
