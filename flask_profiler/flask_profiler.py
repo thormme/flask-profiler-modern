@@ -321,7 +321,7 @@ class _ProfilerState(object):
             async def wrapper(*args, **kwargs):
                 if not self.enabled:
                     return await func(*args, **kwargs)
-                return await self._invoke_http(func, args, kwargs)
+                return await self._invoke_http_async(func, args, kwargs)
             select_wrapper = wrapper
         else:
             @functools.wraps(func)
