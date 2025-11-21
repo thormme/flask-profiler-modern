@@ -26,6 +26,7 @@ var/
 *.egg
 !flask_profiler/static/dist/
 .DS_Store
+.venv/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -80,3 +81,6 @@ docs_berk/
 flask_profiler/static/dist/js/index.*.js
 flask_profiler/static/dist/js/index.*.js.map
 flask_profiler/static/dist/assets/*.map
+
+# Rust
+Cargo.lock

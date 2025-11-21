@@ -1,6 +1,9 @@
 [build-system]
-requires = ["poetry-core>=1.2.0", "wheel",]
+requires = ["poetry-core>=1.2.0", "maturin>=1.10.2", "wheel"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.build]
+script = "build-extension.py"
 
 [tool.coverage.report]
 exclude_lines = [
@@ -68,13 +71,13 @@ pymongo = { version = ">=4.14.1,<5", optional = true }
 
 
 [tool.poetry.group.dev.dependencies]
-
-# A list of all of the optional dependencies, some of which are included in the
-# below `extras`. They can be opted into by apps.
+maturin = ">=1.10.2"
 pytest = { version = ">=8.3", optional = false }
 pytest-cov = { version = ">=5.0", optional = false }
 pytest-asyncio = { version = ">=0.26.0", optional = false }
 pymongo = { version = ">=4.14.1,<5", optional = false }
+# A list of all of the optional dependencies, some of which are included in the
+# below `extras`. They can be opted into by apps.
 mongomock = { version = ">=4.3", optional = true }
 
 
@@ -171,3 +174,7 @@ max-statements = 80
 ban-relative-imports = "all"
 
 
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+module-name = "py_spy_monitor.py_spy_monitor"

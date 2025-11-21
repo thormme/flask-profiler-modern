@@ -1,0 +1,21 @@
+[package]
+name = "py_spy_monitor"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "py_spy_monitor"
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "1.0.100"
+chrono = "0.4.42"
+console = "0.16.1"
+ctrlc = "3.5.1"
+log = "0.4.28"
+py-spy = "0.4.1"
+pyo3 = { version = "0.27.1", features = ["extension-module"] }
+remoteprocess = "0.5.1"
+serde = {version="1.0", features=["rc"]}
+serde_derive = "1.0.228"
+serde_json = "1.0.145"

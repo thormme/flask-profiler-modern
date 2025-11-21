@@ -1,0 +1,13 @@
+services:
+  test:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: test
+    # network_mode: "host"
+    restart: unless-stopped
+    cap_add:
+      - SYS_PTRACE
+    volumes:
+      - .:/app
+    command: bash # Use to spin up a persistent container to exec
