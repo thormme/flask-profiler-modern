@@ -1,4 +1,5 @@
 from pathlib import Path
+import time
 
 import pytest
 from flask import Flask
@@ -76,6 +77,7 @@ def test_profiler_records_per_app_async(tmp_path, late_route):
         @app.route("/late")
         @flask_profiler.profile()
         async def late():
+            time.sleep(0.25)
             return "late"
 
     with app.app_context():
@@ -91,6 +93,9 @@ def test_profiler_records_per_app_async(tmp_path, late_route):
 
     if late_route:
         assert {m["name"] for m in data} == {"/tracked", "/late"}
+        for m in data:
+            if m["name"] == "/late":
+                assert(float(m["elapsed"]) >= 0.25)
     else:
         assert {m["name"] for m in data} == {"/tracked"}
 
