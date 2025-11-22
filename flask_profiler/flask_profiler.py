@@ -4,6 +4,7 @@ import logging
 import re
 import time
 from pprint import pprint as pp
+import os
 
 from flask import Blueprint
 from flask import current_app
@@ -11,6 +12,7 @@ from flask import jsonify
 from flask import request
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.local import LocalProxy
+from .py_spy_monitor import PySpyProfiler
 
 from . import storage
 
@@ -70,6 +72,8 @@ class Measurement(object):
         self.startedAt = 0
         self.endedAt = 0
         self.elapsed = 0
+        self.profiler = None
+        self.profile_stats = None
 
     def __json__(self):
         return {
@@ -81,17 +85,22 @@ class Measurement(object):
             "endedAt": self.endedAt,
             "elapsed": self.elapsed,
             "context": self.context,
+            "profile_stats": self.profile_stats,
         }
 
     def __str__(self):
         return str(self.__json__())
 
     def start(self):
+        current_pid = os.getpid()
+        self.profiler = PySpyProfiler(current_pid)
+
         self.startedAt = time.time()
 
     def stop(self):
         self.endedAt = time.time()
         self.elapsed = round(self.endedAt - self.startedAt, self.DECIMAL_PLACES)
+        self.profile_stats = self.profiler.finish()
 
 
 class _ProfilerState(object):

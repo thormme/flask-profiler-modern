@@ -16,7 +16,7 @@ RUN curl https://sh.rustup.rs -sSf \
     | sh -s -- -y --default-toolchain stable
 
 # Install maturin (needs cargo in PATH)
-RUN pip install --no-cache-dir maturin poetry
+RUN pip install --no-cache-dir maturin poetry flask sqlalchemy
 
 # Your project
 WORKDIR /app

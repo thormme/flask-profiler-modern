@@ -8,6 +8,8 @@ services:
     restart: unless-stopped
     cap_add:
       - SYS_PTRACE
+    ports:
+      - "7123:5000"
     volumes:
       - .:/app
-    command: bash # Use to spin up a persistent container to exec
+    command: sleep infinity # Use to spin up a persistent container to exec

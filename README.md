@@ -207,7 +207,7 @@ cd flask-profiler-modern
 
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+poetry install . -E dev
 
 cd flask_profiler/static
 npm install

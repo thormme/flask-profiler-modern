@@ -75,11 +75,7 @@ impl InternalProfiler {
         // if we're not showing a progress bar, it's probably because we've spawned the process and
         // are displaying its stderr/stdout. In that case add a prefix to our println messages so
         // that we can distinguish
-        let lede = if config.hide_progress {
-            format!("{}{} ", style("py-spy").bold().green(), style(">").dim())
-        } else {
-            "".to_owned()
-        };
+        let lede = format!("{}{} ", style("py-spy").bold().green(), style(">").dim());
 
         let mut errors = 0;
         let mut samples = 0;

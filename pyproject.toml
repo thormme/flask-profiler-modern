@@ -31,7 +31,6 @@ packages = [
 authors = ["Berk Polat <berkpolat@gmail.com>", "Mustafa Atik <muatik@gmail.com>"]
 maintainers = ["Berk Polat <berkpolat@gmail.com>"]
 
-include = []
 license = "MIT"
 readme = "README.md"
 

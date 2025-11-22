@@ -24,7 +24,7 @@ def build():
         cargo_args = shlex.split(os.getenv("MATURIN_BUILD_ARGS", ""))
 
     maturin("build", "-r", *cargo_args)
-
+    
     # We won't use the wheel built by maturin directly since
     # we want Poetry to build it, but we need to retrieve the
     # compiled extensions from the maturin wheel.
@@ -33,7 +33,7 @@ def build():
         whl.extractall(wheels_dir.as_posix())
 
         for extension in wheels_dir.rglob("**/*.so"):
-            shutil.copyfile(extension, Path(__file__).parent.joinpath(extension.name))
+            shutil.copyfile(extension, Path(__file__).parent.joinpath("flask_profiler", extension.name))
 
     shutil.rmtree(wheels_dir)
 

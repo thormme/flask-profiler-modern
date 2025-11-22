@@ -15,7 +15,7 @@ app.config["flask_profiler"] = {
         "db_url": "sqlite:///flask_profiler.sql"  # optional
     },
     "basicAuth":{
-        "enabled": True,
+        "enabled": False,
         "username": "admin",
         "password": "admin"
     },
@@ -45,6 +45,13 @@ def listProducts():
 def getPhoto():
     return "your photo"
 
+@app.route('/long_request/<iterations>', methods=['GET'])
+def longRequest(iterations):
+    val = 0
+    for i in range(int(iterations)):
+        val += 2
+    
+    return jsonify({'iterations': iterations, 'value': val})
 
 @app.route('/add', methods=['POST'])
 def add_numbers():
@@ -107,4 +114,4 @@ def doSomethingImportant():
     return "flask-provider will measure this request."
 
 if __name__ == '__main__':
-    app.run(host="127.0.0.1", port=5000)
+    app.run(host="0.0.0.0", port=5000)
