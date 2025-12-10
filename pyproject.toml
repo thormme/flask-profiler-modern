@@ -64,7 +64,6 @@ python-dotenv = "^1.2.1"
 tomli = { version = "^2.3.0", python = "<3.11" }
 Flask = { extras = ["async"], version = ">=3.0.0" }
 Flask-HTTPAuth = ">=4.7.0"
-flask-cors = ">=6.0.1"
 simplejson = ">=3.19.0"
 SQLAlchemy = { version = ">2.0.0", optional = true }
 pymongo = { version = ">=4.14.1,<5", optional = true }
