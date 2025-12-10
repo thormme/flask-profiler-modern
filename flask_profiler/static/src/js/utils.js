@@ -39,6 +39,10 @@ export class APIService {
     return this._fetchJson('/measurements/methodDistribution/', params);
   }
 
+  async fetchProfileStatsConfig(params = {}) {
+    return this._fetchJson('/config/profileStats', params);
+  }
+
   async getMeasurementDetail(measurementId) {
     return this._fetchJson(`/measurements/${measurementId}`);
   }

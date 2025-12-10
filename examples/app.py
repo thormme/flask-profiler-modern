@@ -22,7 +22,13 @@ app.config["flask_profiler"] = {
     "ignore": [
         "/static/*",
         "/secrets/password/"
-    ]
+    ],
+    "stackProfiling": {
+        "enabled": True,
+        "profileFormat": "speedscope",
+        "profileViewerURL": "http://localhost:4444/",
+        "profileStatsCorsURL": "*"
+    }
 }
 
 

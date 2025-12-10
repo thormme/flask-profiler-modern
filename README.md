@@ -63,7 +63,13 @@ app.config["flask_profiler"] = {
     "basicAuth": {
         "enabled": False                  # enable
     },
-    "ignore": ["^/static/.*"]
+    "ignore": ["^/static/.*"],
+    "stackProfiling": {
+        "enabled": True,
+        "profileFormat": "speedscope",
+        "profileViewerURL": "https://speedscope.app/",
+        "profileStatsCorsURL": "https://speedscope.app/"
+    }
 }
 
 @app.route("/ping")
@@ -132,15 +138,19 @@ Extras control dependency installation; see [Installation](#installation).
 
 | Key                               | Type      | Default                        | Description                                             |
 |-----------------------------------|-----------|--------------------------------|---------------------------------------------------------|
-| `enabled`                         | bool      | `False`                        | Toggle profiling globally                                |
-| `storage.engine`                  | str       | `"sqlite"`                    | Storage backend identifier                               |
-| `storage.db_url`                  | str       | engine-specific                | Optional database URL for SQL storage                    |
-| `basicAuth.enabled`               | bool      | `False`                        | Enable dashboard authentication                          |
-| `basicAuth.username/password`     | str       | `admin/admin` (example)        | Credentials if basic auth is enabled                     |
-| `ignore`                          | list[str] | `[]`                           | Regex patterns to skip profiling                         |
+| `enabled`                         | bool      | `False`                        | Toggle profiling globally                               |
+| `storage.engine`                  | str       | `"sqlite"`                     | Storage backend identifier                              |
+| `storage.db_url`                  | str       | engine-specific                | Optional database URL for SQL storage                   |
+| `basicAuth.enabled`               | bool      | `False`                        | Enable dashboard authentication                         |
+| `basicAuth.username/password`     | str       | `admin/admin` (example)        | Credentials if basic auth is enabled                    |
+| `ignore`                          | list[str] | `[]`                           | Regex patterns to skip profiling                        |
 | `sampling_function`               | callable  | `None`                         | Return truthy to record, falsy to skip                  |
-| `endpointRoot`                    | str       | `"flask-profiler"`            | URL prefix for dashboard and API                         |
-| `verbose`                         | bool      | `False`                        | Print measurement JSON to stdout                         |
+| `endpointRoot`                    | str       | `"flask-profiler"`             | URL prefix for dashboard and API                        |
+| `verbose`                         | bool      | `False`                        | Print measurement JSON to stdout                        |
+| `stackProfiling.enabled`.         | bool      | `False`                        | Enable py-spy stack level traces                        |
+| `stackProfiling.profileFormat`    | str       | `speedscope`                   | What stack profiling format to produce (only `speedscope`) |
+| `stackProfiling.profileViewerURL` | str       | `https://speedscope.app/`      | What url to show for viewing the stack level profile    |
+| `stackProfiling.profileStatsCorsURL` | dict   | None                           | CORS URL for external viewer access (e.g. `*` or `https://speedscope.app/`) |
 
 ---
 
@@ -209,23 +219,20 @@ python -m venv .venv
 source .venv/bin/activate
 poetry install . -E dev
 
-cd flask_profiler/static
-npm install
-npm run dev
+poetry run bash -c "cd flask_profiler/static && npm install"
+poetry run bash -c "cd flask_profiler/static && npm run dev"
 ```
 
 Run tests before submitting changes:
 
 ```bash
-source .venv/bin/activate
-pytest
+poetry run pytest
 ```
 
 Building frontend assets:
 
 ```bash
-cd flask_profiler/static
-npm run build
+poetry run bash -c "cd flask_profiler/static && npm run build"
 ```
 
 `FLASK_PROFILER_TEST_MONGO_URI` points pytest at a real MongoDB. Without it, tests fall back to `mongomock`.

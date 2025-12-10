@@ -5,6 +5,8 @@ FROM python:3.12-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     build-essential \
+    nodejs \
+    npm \
  && rm -rf /var/lib/apt/lists/*
 
 # Install Rust via rustup

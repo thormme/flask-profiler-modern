@@ -5,6 +5,7 @@ import re
 import time
 from pprint import pprint as pp
 import os
+from typing import Any, Dict
 
 from flask import Blueprint
 from flask import current_app
@@ -62,7 +63,7 @@ def is_ignored(name, conf):
 class Measurement(object):
     DECIMAL_PLACES = 6
 
-    def __init__(self, name, args, kwargs, method, context=None):
+    def __init__(self, name, args, kwargs, method, context=None, stackProfilingConfig: Dict[str, Any] = None):
         super(Measurement, self).__init__()
         self.context = context
         self.name = name
@@ -73,7 +74,8 @@ class Measurement(object):
         self.endedAt = 0
         self.elapsed = 0
         self.profiler = None
-        self.profile_stats = None
+        self.profileStats = None
+        self.stack_profiling_config = stackProfilingConfig
 
     def __json__(self):
         return {
@@ -85,7 +87,7 @@ class Measurement(object):
             "endedAt": self.endedAt,
             "elapsed": self.elapsed,
             "context": self.context,
-            "profile_stats": self.profile_stats,
+            "profileStats": self.profileStats,
         }
 
     def __str__(self):
@@ -93,14 +95,19 @@ class Measurement(object):
 
     def start(self):
         current_pid = os.getpid()
-        self.profiler = PySpyProfiler(current_pid)
+        
+        if self.stack_profiling_config.get('enabled', False):
+            self.profiler = PySpyProfiler(current_pid)
 
         self.startedAt = time.time()
 
     def stop(self):
         self.endedAt = time.time()
         self.elapsed = round(self.endedAt - self.startedAt, self.DECIMAL_PLACES)
-        self.profile_stats = self.profiler.finish()
+        if not self.profiler is None:
+            self.profileStats = self.profiler.finish()
+        else:
+            self.profileStats = ""
 
 
 class _ProfilerState(object):
@@ -112,6 +119,18 @@ class _ProfilerState(object):
         self.auth = None
         self._auth_strategy = "none"
         self._auth_decorator = None
+        
+        default_stack_profiling_conf = {
+            "enabled": False,
+            "profileFormat": "speedscope",
+            "profileViewerURL": "https://speedscope.app/",
+            "profileStatsCorsURL": None
+        }
+        stack_profiling_conf = default_stack_profiling_conf | self.conf.get('stackProfiling', {})
+        self.conf['stackProfiling'] = stack_profiling_conf
+        stack_profiling_enabled = stack_profiling_conf.get('enabled', False)
+        self.stack_profiling_enabled = stack_profiling_enabled
+        
         if not self.enabled:
             return
         self._auth_decorator = self._init_authenticator()
@@ -208,6 +227,31 @@ class _ProfilerState(object):
         def get_context(measurement_id):
             return jsonify(self.collection.get(measurement_id))
 
+        @fp.route("/api/measurements/profileStats/<measurement_id>")
+        @protect
+        def get_profile_context(measurement_id):
+            logger.warning(request.environ.get('HTTP_ORIGIN'))
+            response = jsonify(self.collection.get(measurement_id).get('profileStats'))
+            # Allow tools like speedscope to call this endpoint
+            stackProfilingConf = self.conf.get('stackProfiling', {})
+            allowed_cors_endpoint = stackProfilingConf.get('profileStatsCorsURL', None)
+            if self.stack_profiling_enabled and not allowed_cors_endpoint is None:
+                response.headers.add("Access-Control-Allow-Origin", allowed_cors_endpoint)
+            return response
+        
+        @fp.route("/api/config/profileStats")
+        @protect
+        def get_profile_stats_config():
+            stackProfilingConf = self.conf.get('stackProfiling', {})
+            profiler_endpoint = stackProfilingConf.get('profileViewerURL', None)
+            profile_format = stackProfilingConf.get('profileFormat', None)
+            response = jsonify({
+                "enabled": self.stack_profiling_enabled,
+                "profileViewerURL": profiler_endpoint,
+                "profileFormat": profile_format
+            })
+            return response
+
         @fp.route("/api/measurements/timeseries/")
         @protect
         def get_requests_timeseries():
@@ -258,7 +302,9 @@ class _ProfilerState(object):
     def _record_call(self, func, name, method, context, args, kwargs):
         if self._is_ignored(name) or not self._should_sample():
             return func(*args, **kwargs)
-        measurement = Measurement(name, args, kwargs, method, context)
+        
+        stack_profiling_config = self.conf.get('stackProfiling', {})
+        measurement = Measurement(name, args, kwargs, method, context, stack_profiling_config)
         measurement.start()
         try:
             return func(*args, **kwargs)
@@ -272,7 +318,8 @@ class _ProfilerState(object):
         if self._is_ignored(name) or not self._should_sample():
             return await func(*args, **kwargs)
         
-        measurement = Measurement(name, args, kwargs, method, context)
+        stack_profiling_config = self.conf.get('stackProfiling', {})
+        measurement = Measurement(name, args, kwargs, method, context, stack_profiling_config)
         measurement.start()
         try:
             return await func(*args, **kwargs)

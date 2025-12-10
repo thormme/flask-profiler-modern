@@ -28,9 +28,10 @@ class Measurements(base):
     kwargs = Column(Text)
     name = Column(Text)
     context = Column(Text)
+    profileStats = Column(Text)
 
     def __repr__(self):
-        return "<Measurements {}, {}, {}, {}, {}, {}, {}, {}, {}>".format(
+        return "<Measurements {}, {}, {}, {}, {}, {}, {}, {}, {}, {}>".format(
             self.id,
             self.startedAt,
             self.endedAt,
@@ -39,7 +40,8 @@ class Measurements(base):
             self.args,
             self.kwargs,
             self.name,
-            self.context
+            self.context,
+            self.profileStats
         )
 
 
@@ -83,6 +85,7 @@ class Sqlalchemy(BaseStorage):
         context = json.dumps(kwds.get('context', {}))
         method = kwds.get('method', None)
         name = kwds.get('name', None)
+        profileStats = kwds.get('profileStats', None)
 
         with self.Session() as session:
             try:
@@ -95,6 +98,7 @@ class Sqlalchemy(BaseStorage):
                     context=context,
                     method=method,
                     name=name,
+                    profileStats=profileStats,
                 ))
                 session.commit()
             except Exception:
@@ -162,6 +166,7 @@ class Sqlalchemy(BaseStorage):
             "kwargs": json.loads(row.kwargs),
             "name": row.name,
             "context": json.loads(row.context),
+            "profileStats": json.loads(row.profileStats) if row.profileStats else None,
         }
         return data
 

@@ -10,14 +10,17 @@ const api = new APIService();
 let filteringTable;
 let dateRangePicker;
 let methodDropdown;
+let profileDetailConfig;
 
-export function initFiltering() {
+export async function initFiltering() {
   const container = document.getElementById('filtering-table');
   
   if (!container) {
     console.error('Filtering table container not found');
     return;
   }
+
+  profileDetailConfig = await api.fetchProfileStatsConfig();
   
   // Initialize server-side table for filtering
   filteringTable = new ServerSideTable(container, '/flask-profiler/api/measurements/', {
@@ -47,15 +50,38 @@ export function initFiltering() {
         field: 'id',
         label: 'Actions',
         sortable: false,
-        render: (value) => {
-          return createElement('button', {
-            className: 'btn-view',
+        render: (value, row) => {
+          let actionsDiv = createElement('div', {
+            className: 'actions-div'
+          });
+          actionsDiv.append(createElement('button', {
+            className: 'btn-view view-json-button',
             attrs: {
               'data-id': String(value),
               type: 'button'
             },
             text: 'View JSON'
-          });
+          }));
+          // actionsDiv.append(createElement('button', {
+          //   className: 'btn-view view-profile-button',
+          //   attrs: {
+          //     'data-id': String(value),
+          //     type: 'button'
+          //   },
+          //   text: 'View Profile Recording'
+          // })); // #profileURL=[URL-encoded profile URL]&title=[URL-encoded custom title]
+          if (row.profileStats) {
+            let profileURL = new URL(`/flask-profiler/api/measurements/profileStats/${value}`, window.location);
+            let viewerURL = new URL(`/#profileURL=${encodeURI(profileURL)}&title=profile`, profileDetailConfig.profileViewerURL);
+            actionsDiv.append(createElement('a', {
+              className: 'btn-view view-profile-button',
+              attrs: {
+                href: viewerURL
+              },
+              text: 'View Profile Recording'
+            }));
+          }
+          return actionsDiv;
         }
       }
     ],
@@ -95,6 +121,8 @@ export function initFiltering() {
   
   // Handle View JSON buttons
   container.addEventListener('click', handleViewJSON);
+  // Handle View Profile buttons
+  // container.addEventListener('click', handleViewProfile);
 }
 
 function setupFilterControls() {
@@ -139,9 +167,16 @@ function handleFilterEndpoint(e) {
 }
 
 async function handleViewJSON(e) {
-  if (e.target.classList.contains('btn-view')) {
+  if (e.target.classList.contains('view-json-button')) {
     const id = e.target.dataset.id;
     await showMeasurementDetail(id);
+  }
+}
+
+async function handleViewProfile(e) {
+  if (e.target.classList.contains('view-profile-button')) {
+    const id = e.target.dataset.id;
+    await showProfileDetail(id);
   }
 }
 
@@ -214,6 +249,11 @@ function resetFilters() {
 async function showMeasurementDetail(id) {
   try {
     const detail = await api.getMeasurementDetail(id);
+
+    if (detail.profileStats) {
+      // Coloring the profileStats is very slow so leave it as a string
+      detail.profileStats = JSON.stringify(detail.profileStats);
+    }
     
     // Create modal with JSON viewer
     const modal = document.createElement('div');
@@ -230,6 +270,52 @@ async function showMeasurementDetail(id) {
     const jsonViewer = modal.querySelector('.json-viewer');
     jsonViewer.classList.add('json-viewer-highlighted');
     jsonViewer.innerHTML = highlightJSON(detail);
+    
+    document.body.appendChild(modal);
+    
+    // Close modal on click
+    modal.querySelector('.modal-close').addEventListener('click', () => {
+      modal.remove();
+    });
+    
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+    
+    // Close on Escape key
+    const escapeHandler = (e) => {
+      if (e.key === 'Escape') {
+        modal.remove();
+        document.removeEventListener('keydown', escapeHandler);
+      }
+    };
+    document.addEventListener('keydown', escapeHandler);
+    
+  } catch (error) {
+    console.error('Failed to load measurement detail:', error);
+    showError('Failed to load measurement details');
+  }
+}
+
+async function showProfileDetail(id) {
+  try {
+    const detail = await api.getMeasurementDetail(id);
+    
+    // Create modal with JSON viewer
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <span class="modal-close">&times;</span>
+        <h3>Speedscope Profile Details</h3>
+        <pre class="json-viewer"></pre>
+      </div>
+    `;
+    
+    // Safely render JSON with escaped HTML
+    const jsonViewer = modal.querySelector('.json-viewer');
+    jsonViewer.classList.add('json-viewer-highlighted');
+    jsonViewer.innerHTML = JSON.stringify(detail.profileStats);
     
     document.body.appendChild(modal);
     
