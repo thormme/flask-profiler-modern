@@ -29,8 +29,8 @@ packages = [
 ]
 
 include = [
-    { path = "flask_profiler/static/dist/**/*" },
-    { path = "flask_profiler/*.so" },
+    { path = "flask_profiler/static/dist/**/*", format = ["sdist", "wheel"] },
+    { path = "flask_profiler/**/*.so", format = ["sdist", "wheel"] },
 ]
 
 authors = ["Berk Polat <berkpolat@gmail.com>", "Mustafa Atik <muatik@gmail.com>"]
