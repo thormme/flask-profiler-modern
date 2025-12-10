@@ -28,6 +28,11 @@ packages = [
     { include = "flask_profiler" },
 ]
 
+include = [
+    { path = "flask_profiler/static/dist/**/*" },
+    { path = "flask_profiler/*.so" },
+]
+
 authors = ["Berk Polat <berkpolat@gmail.com>", "Mustafa Atik <muatik@gmail.com>"]
 maintainers = ["Berk Polat <berkpolat@gmail.com>"]
 
