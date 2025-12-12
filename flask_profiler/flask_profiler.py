@@ -107,7 +107,11 @@ class Measurement(object):
         self.endedAt = time.time()
         self.elapsed = round(self.endedAt - self.startedAt, self.DECIMAL_PLACES)
         if not self.profiler is None:
-            self.profileStats = self.profiler.finish()
+            try:
+                self.profileStats = self.profiler.finish()
+            except Exception as exc:
+                logger.warning(f"Exception in profiler thread: {exc}")
+                self.profileStats = ""
         else:
             self.profileStats = ""
 

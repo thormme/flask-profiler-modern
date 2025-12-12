@@ -265,12 +265,6 @@ class Sqlalchemy(BaseStorage):
     
     def begin_lockable_transaction(self, session: Session):
         return LockableTransaction(session, self.is_sqlite)
-        
-    @staticmethod
-    def replace_transaction_type(conn: Connection):
-        logger.warning("clauseelement")
-        traceback.print_stack()
-        logger.warning(f"replace trans {conn}")
     
     def retention_deletion(self) -> bool:
         with self.Session() as session:
