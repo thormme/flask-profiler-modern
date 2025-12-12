@@ -12,7 +12,9 @@ app.config["flask_profiler"] = {
     "enabled": app.config["DEBUG"],
     "storage": {
         "engine": "sqlalchemy",
-        "db_url": "sqlite:///flask_profiler.sql"  # optional
+        "db_url": "sqlite:///flask_profiler.sql",  # optional
+        "retention_period_enabled": False,
+        "retention_period_s": 30
     },
     "basicAuth":{
         "enabled": False,

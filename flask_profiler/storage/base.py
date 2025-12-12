@@ -19,6 +19,9 @@ class BaseStorage(object):
 
     def delete(self, measurementId):
         raise Exception("Not implemented Error")
+    
+    def retention_deletion(self) -> bool:
+        raise Exception("Not implemented Error")
 
     def truncate(self):
         raise Exception("Not implemented Error")

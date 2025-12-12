@@ -6,6 +6,7 @@ import time
 from pprint import pprint as pp
 import os
 from typing import Any, Dict
+from datetime import datetime, timedelta
 
 from flask import Blueprint
 from flask import current_app
@@ -13,6 +14,7 @@ from flask import jsonify
 from flask import request
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.local import LocalProxy
+from flask_apscheduler import APScheduler
 from .py_spy_monitor import PySpyProfiler
 
 from . import storage
@@ -119,6 +121,7 @@ class _ProfilerState(object):
         self.auth = None
         self._auth_strategy = "none"
         self._auth_decorator = None
+        self.scheduler = None
         
         default_stack_profiling_conf = {
             "enabled": False,
@@ -137,6 +140,7 @@ class _ProfilerState(object):
         self.collection = storage.getCollection(self.conf.get("storage", {}))
         self._wrap_app_endpoints()
         self._register_internal_routes()
+        self._schedule_retention_deletion()
         if self._auth_strategy == "none":
             logging.warning(" * CAUTION: flask-profiler dashboard is not protected!")
 
@@ -184,6 +188,20 @@ class _ProfilerState(object):
             return True
         logging.warning("flask-profiler authentication failed")
         return False
+    
+    def _schedule_retention_deletion(self):
+        if self.scheduler is None:
+            self.scheduler = APScheduler()
+            self.scheduler.init_app(self.app)
+            self.scheduler.start()
+        
+        if (self.collection.config.get("retention_period_enabled") == True):
+            retention_period_s = float(self.collection.config.get("retention_period_s"))
+            job_run_frequency = retention_period_s / 8
+            immediate_run_date = datetime.now() + timedelta(0, 10)
+            @self.scheduler.task('interval', id='retention_deletion', seconds=job_run_frequency, misfire_grace_time=None, next_run_time=immediate_run_date)
+            def retention_deletion_job():
+                self.collection.retention_deletion()
 
     def _wrap_app_endpoints(self):
         for endpoint, func in list(self.app.view_functions.items()):
@@ -275,6 +293,12 @@ class _ProfilerState(object):
         @protect
         def delete_database():
             response = jsonify({"status": self.collection.truncate()})
+            return response
+        
+        @fp.route("/db/retentionDeletion")
+        @protect
+        def run_database_retention_deletion():
+            response = jsonify({"status": self.collection.retention_deletion()})
             return response
 
         @fp.after_request
@@ -423,6 +447,7 @@ class Profiler(object):
         app.extensions[_EXTENSION_KEY] = state
         global _last_state
         _last_state = state
+        
         return state
 
 

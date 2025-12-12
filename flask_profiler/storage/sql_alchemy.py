@@ -1,13 +1,20 @@
 import json
 from decimal import Decimal, ROUND_UP
+
+import logging
+import traceback
+from typing import Union
 from .base import BaseStorage
 from datetime import datetime
 import time
-from sqlalchemy import create_engine, Text
-from sqlalchemy import Column, Integer, Numeric
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import Connection, create_engine, Text, Select, Update, Delete, event, text
+from sqlalchemy import Column, Integer, Numeric, ScalarResult
+from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy import func
 from sqlalchemy.pool import StaticPool
+
+logger = logging.getLogger("flask-profiler")
+logger.setLevel(logging.INFO)
 
 base = declarative_base()
 
@@ -44,6 +51,71 @@ class Measurements(base):
             self.profileStats
         )
 
+class Metadata(base):
+    __tablename__ = 'flask_profiler_metadata'
+
+    id = Column(Integer, primary_key=True)
+    last_retention_deletion_time = Column(Numeric)
+
+    def __repr__(self):
+        return "<Metadata {}, {}>".format(
+            self.id,
+            self.last_retention_deletion_date
+        )
+
+class LockableTransaction():
+    def __init__(self, session: Session, is_sqlite: bool):
+        self.is_sqlite = is_sqlite
+        self.session = session
+        self.in_transaction = False
+        self.begin()
+            
+    def begin(self):
+        if self.is_sqlite:
+            self.session.execute(text("BEGIN EXCLUSIVE"))
+        else:
+            self.transaction = self.session.begin()
+        self.in_transaction = True
+            
+    def commit(self) -> bool:
+        if not self.in_transaction:
+            return False
+        
+        if self.is_sqlite:
+            self.session.execute(text("COMMIT"))
+        else:
+            self.transaction.commit()
+            
+        self.in_transaction = False
+        return True
+        
+    def rollback(self):
+        if not self.in_transaction:
+            return False
+        
+        if self.is_sqlite:
+            self.session.execute(text("ROLLBACK"))
+        else:
+            self.transaction.rollback()
+
+        self.in_transaction = False
+        return True
+    
+    def close(self, is_error: bool = False):
+        if is_error:
+            self.rollback()
+        else:
+            self.commit()
+            
+    def __enter__(self):
+        return self
+            
+    def __exit__(self, exc_type, exc_value, traceback):
+        is_error = not exc_type is None
+        self.close(is_error)
+        
+    def __del__(self):
+        self.close()
 
 class Sqlalchemy(BaseStorage):
 
@@ -52,8 +124,12 @@ class Sqlalchemy(BaseStorage):
         self.config = config
         engine_kwargs = {}
         db_url = self.config.get("db_url", "sqlite:///flask_profiler.sql")
+        DEFAULT_RETENTION_PERIOD_S = 2629743 # 1 month
+        self.config['retention_period_s'] = float(self.config.get('retention_period_s', DEFAULT_RETENTION_PERIOD_S))
+        self.config['retention_period_enabled'] = float(self.config.get('retention_period_enabled', False))
 
-        is_in_memory_sqlite = db_url.startswith("sqlite:///:memory:") or db_url == "sqlite://"
+        self.is_sqlite = db_url.startswith("sqlite://")
+        is_in_memory_sqlite: bool = db_url.startswith("sqlite:///:memory:") or db_url == "sqlite://"
         if is_in_memory_sqlite:
             engine_kwargs["poolclass"] = StaticPool
             engine_kwargs["connect_args"] = {"check_same_thread": False}
@@ -65,6 +141,7 @@ class Sqlalchemy(BaseStorage):
             engine_kwargs["pool_pre_ping"] = self.config.get("pool_pre_ping", True)
 
         self.db = create_engine(db_url, **engine_kwargs)
+        
         self.Session = sessionmaker(bind=self.db)
         self.create_database()
 
@@ -73,6 +150,22 @@ class Sqlalchemy(BaseStorage):
 
     def create_database(self):
         base.metadata.create_all(self.db)
+        
+        # Add the metadata row if it does not exist
+        with self.Session() as session:
+            with self.begin_lockable_transaction(session) as locked_transaction:
+                last_retention_deletion_time_sql: Select[float] = Select(Metadata.last_retention_deletion_time).with_for_update(nowait=True, of=Metadata.last_retention_deletion_time, skip_locked=True)
+                last_retention_deletion_time: ScalarResult[float] = session.execute(last_retention_deletion_time_sql).scalar_one_or_none()
+                if last_retention_deletion_time is None:
+                    try:
+                        session.add(Metadata(last_retention_deletion_time=0))
+                        locked_transaction.commit()
+                        session.commit()
+                    except Exception as e:
+                        print(e)
+                        locked_transaction.rollback()
+                        session.rollback()
+                        return False
 
     def insert(self, kwds):
         endedAt = int(kwds.get('endedAt', None))
@@ -169,11 +262,54 @@ class Sqlalchemy(BaseStorage):
             "profileStats": json.loads(row.profileStats) if row.profileStats else None,
         }
         return data
+    
+    def begin_lockable_transaction(self, session: Session):
+        return LockableTransaction(session, self.is_sqlite)
+        
+    @staticmethod
+    def replace_transaction_type(conn: Connection):
+        logger.warning("clauseelement")
+        traceback.print_stack()
+        logger.warning(f"replace trans {conn}")
+    
+    def retention_deletion(self) -> bool:
+        with self.Session() as session:
+            # Create a transaction in order to lock on the metadata table
+            with self.begin_lockable_transaction(session) as locked_transaction:
+                
+                try:
+                    retention_period_s = float(self.config.get("retention_period_s"))
+                    previous_clean_time_buffer = retention_period_s / 4
+                    
+                    # Lock on the metadata table to avoid multiple processes or servers duplicating effort
+                    last_retention_deletion_time_sql: Select[float] = Select(Metadata.last_retention_deletion_time).with_for_update(nowait=True, of=Metadata.last_retention_deletion_time, skip_locked=True)
+                    last_retention_deletion_time: ScalarResult[float] = session.execute(last_retention_deletion_time_sql).scalar_one()
+                    current_time = time.time()
+                    if float(last_retention_deletion_time) + previous_clean_time_buffer < current_time:
+                        
+                        session.execute(
+                            Update(Metadata)
+                            .values(last_retention_deletion_time=current_time)
+                        )
+                        
+                        delete_sql: Delete[Measurements] = Delete(Measurements).where(Measurements.startedAt + retention_period_s < current_time)
+                        session.execute(delete_sql)
+                        locked_transaction.commit()
+                        session.commit()
+                        return True
+                    return False
+                except Exception as e:
+                    print(e)
+                    locked_transaction.rollback()
+                    session.rollback()
+                    return False
 
     def truncate(self):
         with self.Session() as session:
             try:
                 session.query(Measurements).delete()
+                session.query(Metadata).delete()
+                session.add(Metadata(last_retention_deletion_time=0))
                 session.commit()
                 return True
             except Exception:

@@ -141,13 +141,15 @@ Extras control dependency installation; see [Installation](#installation).
 | `enabled`                         | bool      | `False`                        | Toggle profiling globally                               |
 | `storage.engine`                  | str       | `"sqlite"`                     | Storage backend identifier                              |
 | `storage.db_url`                  | str       | engine-specific                | Optional database URL for SQL storage                   |
+| `storage.retention_period_enabled`| bool      | `False`                        | Periodically delete measurements older than `retention_period_s` |
+| `storage.retention_period_s`      | float     | `2629743` (1 month)            | Maximum age of measurements to keep                     |
 | `basicAuth.enabled`               | bool      | `False`                        | Enable dashboard authentication                         |
 | `basicAuth.username/password`     | str       | `admin/admin` (example)        | Credentials if basic auth is enabled                    |
 | `ignore`                          | list[str] | `[]`                           | Regex patterns to skip profiling                        |
 | `sampling_function`               | callable  | `None`                         | Return truthy to record, falsy to skip                  |
 | `endpointRoot`                    | str       | `"flask-profiler"`             | URL prefix for dashboard and API                        |
 | `verbose`                         | bool      | `False`                        | Print measurement JSON to stdout                        |
-| `stackProfiling.enabled`.         | bool      | `False`                        | Enable py-spy stack level traces                        |
+| `stackProfiling.enabled`          | bool      | `False`                        | Enable py-spy stack level traces                        |
 | `stackProfiling.profileFormat`    | str       | `speedscope`                   | What stack profiling format to produce (only `speedscope`) |
 | `stackProfiling.profileViewerURL` | str       | `https://speedscope.app/`      | What url to show for viewing the stack level profile    |
 | `stackProfiling.profileStatsCorsURL` | dict   | None                           | CORS URL for external viewer access (e.g. `*` or `https://speedscope.app/`) |
@@ -217,7 +219,7 @@ cd flask-profiler-modern
 
 python -m venv .venv
 source .venv/bin/activate
-poetry install . -E dev
+poetry install -E dev
 
 poetry run bash -c "cd flask_profiler/static && npm install"
 poetry run bash -c "cd flask_profiler/static && npm run dev"
