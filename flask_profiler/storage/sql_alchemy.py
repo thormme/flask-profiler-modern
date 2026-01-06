@@ -12,6 +12,7 @@ from sqlalchemy import Column, Integer, Numeric, ScalarResult
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy import func
 from sqlalchemy.pool import StaticPool
+from sqlalchemy_utils import database_exists, create_database
 
 logger = logging.getLogger("flask-profiler")
 logger.setLevel(logging.INFO)
@@ -149,6 +150,9 @@ class Sqlalchemy(BaseStorage):
         return self
 
     def create_database(self):
+        if not database_exists(self.db.url):
+            create_database(self.db.url)
+        
         base.metadata.create_all(self.db)
         
         # Add the metadata row if it does not exist
