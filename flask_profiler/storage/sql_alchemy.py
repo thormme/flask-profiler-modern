@@ -154,7 +154,7 @@ class Sqlalchemy(BaseStorage):
         # Add the metadata row if it does not exist
         with self.Session() as session:
             with self.begin_lockable_transaction(session) as locked_transaction:
-                last_retention_deletion_time_sql: Select[float] = Select(Metadata.last_retention_deletion_time).with_for_update(nowait=True, of=Metadata.last_retention_deletion_time, skip_locked=True)
+                last_retention_deletion_time_sql: Select[float] = Select(Metadata.last_retention_deletion_time).with_for_update(nowait=True, of=Metadata.last_retention_deletion_time)
                 last_retention_deletion_time: ScalarResult[float] = session.execute(last_retention_deletion_time_sql).scalar_one_or_none()
                 if last_retention_deletion_time is None:
                     try:
