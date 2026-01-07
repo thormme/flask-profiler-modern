@@ -280,7 +280,7 @@ class Sqlalchemy(BaseStorage):
                     previous_clean_time_buffer = retention_period_s / 4
                     
                     # Lock on the metadata table to avoid multiple processes or servers duplicating effort
-                    last_retention_deletion_time_sql: Select[float] = Select(Metadata.last_retention_deletion_time).with_for_update(nowait=True, of=Metadata.last_retention_deletion_time, skip_locked=True)
+                    last_retention_deletion_time_sql: Select[float] = Select(Metadata.last_retention_deletion_time).with_for_update(nowait=True, of=Metadata.last_retention_deletion_time)
                     last_retention_deletion_time: ScalarResult[float] = session.execute(last_retention_deletion_time_sql).scalar_one()
                     current_time = time.time()
                     if float(last_retention_deletion_time) + previous_clean_time_buffer < current_time:
