@@ -41,7 +41,7 @@ pub struct InternalProfiler {
 impl InternalProfiler {
     pub fn new(pid: remoteprocess::Pid) -> Self {
 
-        let args = ["p".to_string(), "record".to_string(), "-p".to_string(), pid.to_string(), "-f".to_string(), "speedscope".to_string(), "--nonblocking".to_string(), "-r".to_string(), "1000".to_string()];
+        let args = ["p".to_string(), "record".to_string(), "-p".to_string(), pid.to_string(), "-f".to_string(), "speedscope".to_string(), "--nonblocking".to_string(), "-r".to_string(), "200".to_string()];
         let config = Config::from_args(&args).unwrap();
         let sampling_rate = config.sampling_rate as f64;
 
