@@ -159,17 +159,17 @@ class Sqlalchemy(BaseStorage):
         with self.Session() as session:
             with self.begin_lockable_transaction(session) as locked_transaction:
                 last_retention_deletion_time_sql: Select[float] = Select(Metadata.last_retention_deletion_time).with_for_update(nowait=True, of=Metadata.last_retention_deletion_time)
-                last_retention_deletion_time: ScalarResult[float] = session.execute(last_retention_deletion_time_sql).scalar_one_or_none()
-                if last_retention_deletion_time is None:
-                    try:
+                try:
+                    last_retention_deletion_time: ScalarResult[float] = session.execute(last_retention_deletion_time_sql).scalar_one_or_none()
+                    if last_retention_deletion_time is None:
                         session.add(Metadata(last_retention_deletion_time=0))
                         locked_transaction.commit()
                         session.commit()
-                    except Exception as e:
-                        print(e)
-                        locked_transaction.rollback()
-                        session.rollback()
-                        return False
+                except Exception as e:
+                    print(e)
+                    locked_transaction.rollback()
+                    session.rollback()
+                    return False
 
     def insert(self, kwds):
         endedAt = int(kwds.get('endedAt', None))
